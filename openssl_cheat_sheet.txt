@@ -1,0 +1,100 @@
+# Generate new CSR and private key
+openssl req -out CSR.csr -new -newkey rsa:2048 -nodes -keyout privateKey.key
+
+# Generate new self-signed certificate
+openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -keyout privateKey.key -out certificate.crt
+
+# Generate a new CSR from existing private key
+openssl req -out CSR.csr -key privateKey.key -new
+
+# Generate new CSR from certificate (must have private key)
+openssl x509 -x509toreq -in certificate.crt -out CSR.csr -signkey privateKey.key
+
+# Remove passphrase from key
+openssl rsa -in privateKey.pem -out newPrivateKey.pem
+
+# Check what is in a CSR
+openssl req -text -noout -verify -in CSR.csr
+
+# Check a private key
+openssl rsa -in privateKey.key -check
+
+# Check a certificate
+openssl x509 -in certificate.crt -text -noout
+
+# Check pkcs12 container
+openssl pkcs12 -info -in keyStore.p12
+
+# Verify hashes
+openssl x509 -noout -modulus -in certificate.crt | openssl md5
+openssl rsa -noout -modulus -in privateKey.key | openssl md5
+openssl req -noout -modulus -in CSR.csr | openssl md5
+
+# Verify SSL servers
+openssl s_client -connect www.paypal.com:443
+
+# Convert certificates
+# DER <-> PEM
+openssl x509 -inform der -in certificate.cer -out certificate.pem
+openssl x509 -outform der -in certificate.pem -out certificate.der
+
+# PKCS12 -> PEM
+openssl pkcs12 -in keyStore.pfx -out keyStore.pem -nodes
+# -nocerts (only keys)
+openssl pkcs12 -in keyStore.pfx -out keyStore.pem -nodes -nocerts
+# -nokeys (only certs)
+openssl pkcs12 -in keyStore.pfx -out keyStore.pem -nodes -nokeys
+
+# PEM -> PKCS12
+openssl pkcs12 -export -out certificate.pfx -inkey privateKey.key -in certificate.crt -certfile CACert.crt
+
+# creating a pkcs#7 format certificate in DER format
+openssl crl2pkcs7 -nocrl -certfile user.crt -certfile ca.crt -outform DER -out user.p7c
+
+# creating a pkcs#12 format certificate (IIS)
+openssl pkcs12 -export -in user.crt -inkey user.key -out server.pkcs12
+
+# provide an ssl server to test against
+openssl s_server -accept 9000 -cert user.crt -key user.key
+
+# verify a s/mime signature
+openssl smime -CAfile /usr/local/lib/openssl/certs/ca-bundle.crt -verify -in messagefile >/dev/null
+
+# extract the s/mime certificate
+openssl smime -pk7out -in messagefile | openssl pkcs7 -print_certs
+
+# show subject, startdate, enddate (validy-time / expire-date)
+openssl x509 -noout -subject -startdate -enddate -in user.crt
+
+# verify if the ca.crt has really signed user.crt
+openssl verify -CAfile ca.crt user.crt
+
+# decrypting the key
+openssl rsa -in user.key -out user.key.decrypted
+
+# Subject Alternate Name
+openssl req \
+  -newkey rsa:4096 \
+  -days 3650 \
+  -nodes \
+  -x509 \
+  -subj "/C=US/ST=Blah/L=Blah/O=Blah/CN=*.foo.com" \
+  -extensions SAN \
+  -config <( cat $( [[ "Darwin" -eq "$(uname -s)" ]]  && echo /System/Library/OpenSSL/openssl.cnf || echo /etc/ssl/openssl.cnf  ) \
+    <(printf "[SAN]\nsubjectAltName='DNS.1:*.foo.com,DNS.2:bar.foo.com,DNS.3:zoo.foo.com'")) \
+  -keyout private_key.pem \
+  -out server.crt
+
+# Command to test SSL connectivity 
+openssl s_client -connect <IP>:<port> -showcerts
+# If there is a proxy server
+openssl s_client -proxy <proxyserver>:<port> -connect <URL or IP>:<port>
+
+# Verify the presence of SSLv2 certificates, run the following:
+openssl s_client -connect <URL or IP>:<port> -ssl2
+
+# Verify the presence of SSLv3 certificates, run the following:
+openssl s_client -connect <URL or IP>:<port> -ssl3
+
+# Verify root, intermediatery and server certificate
+openssl verify -CAfile RootCert.pem -untrusted Intermediate.pem UserCert.pem
