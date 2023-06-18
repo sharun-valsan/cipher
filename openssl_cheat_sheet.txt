@@ -19,13 +19,13 @@ openssl x509 -req -days 360 -in server.csr -CA ca.crt -CAkey ca.key -CAcreateser
 # Remove passphrase from key
 openssl rsa -in privateKey.pem -out newPrivateKey.pem
 
-# Check what is in a CSR
+# Read a CSR
 openssl req -text -noout -verify -in CSR.csr
 
-# Check a private key
+# Read a private key
 openssl rsa -in privateKey.key -check
 
-# Check a certificate
+# Read a certificate
 openssl x509 -in certificate.crt -text -noout
 
 # Check pkcs12 container
