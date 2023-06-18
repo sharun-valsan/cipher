@@ -10,6 +10,12 @@ openssl req -out CSR.csr -key privateKey.key -new
 # Generate new CSR from certificate (must have private key)
 openssl x509 -x509toreq -in certificate.crt -out CSR.csr -signkey privateKey.key
 
+# Signing a CSR using local CA / Custom private-key and certificate. (Using the CA module)
+openssl ca -cert ca.crt -keyfile ca.key -in server.csr -out server.crt
+
+# Signing a CSR using local CA / Custom private-key and certificate. (Using the x509 module)
+openssl x509 -req -days 360 -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+
 # Remove passphrase from key
 openssl rsa -in privateKey.pem -out newPrivateKey.pem
 
